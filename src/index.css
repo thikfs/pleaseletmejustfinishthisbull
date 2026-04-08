@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 140 20% 98%;
+    --foreground: 200 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 200 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 25% 15%;
+
+    --primary: 152 35% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 200 30% 92%;
+    --secondary-foreground: 200 25% 20%;
+
+    --muted: 140 15% 94%;
+    --muted-foreground: 200 10% 45%;
+
+    --accent: 200 45% 85%;
+    --accent-foreground: 200 25% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 140 15% 88%;
+    --input: 140 15% 88%;
+    --ring: 152 35% 45%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 140 20% 96%;
+    --sidebar-foreground: 200 25% 20%;
+    --sidebar-primary: 152 35% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 140 20% 92%;
+    --sidebar-accent-foreground: 200 25% 15%;
+    --sidebar-border: 140 15% 88%;
+    --sidebar-ring: 152 35% 45%;
+
+    --sage: 152 35% 45%;
+    --sage-light: 140 25% 90%;
+    --sky: 200 60% 65%;
+    --sky-light: 200 45% 92%;
+  }
+
+  .dark {
+    --background: 200 25% 8%;
+    --foreground: 140 15% 92%;
+
+    --card: 200 25% 10%;
+    --card-foreground: 140 15% 92%;
+
+    --popover: 200 25% 10%;
+    --popover-foreground: 140 15% 92%;
+
+    --primary: 152 40% 50%;
+    --primary-foreground: 200 25% 8%;
+
+    --secondary: 200 20% 18%;
+    --secondary-foreground: 140 15% 92%;
+
+    --muted: 200 20% 18%;
+    --muted-foreground: 140 10% 60%;
+
+    --accent: 200 25% 22%;
+    --accent-foreground: 140 15% 92%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 20% 18%;
+    --input: 200 20% 18%;
+    --ring: 152 40% 50%;
+
+    --sidebar-background: 200 25% 6%;
+    --sidebar-foreground: 140 15% 90%;
+    --sidebar-primary: 152 40% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 20% 14%;
+    --sidebar-accent-foreground: 140 15% 90%;
+    --sidebar-border: 200 20% 18%;
+    --sidebar-ring: 152 40% 50%;
+
+    --sage: 152 40% 50%;
+    --sage-light: 140 20% 18%;
+    --sky: 200 50% 55%;
+    --sky-light: 200 25% 18%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  }
+}
