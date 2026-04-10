@@ -85,6 +85,12 @@ function bookingHtml(booking: BookingRow, service: ServiceRow | null): string {
   `.trim();
 }
 
+function looksLikeMissingColumnError(msg: string, column: string) {
+  const m = msg.toLowerCase();
+  const c = column.toLowerCase();
+  return m.includes(`column "${c}"`) && m.includes("does not exist");
+}
+
 async function sendResendEmail(params: {
   apiKey: string;
   from: string;
@@ -149,13 +155,19 @@ serve(async (req) => {
       return json({ error: "Invalid request payload. Expected { messages: [{role,content},...] }." }, 400);
     }
 
-   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-   const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-   const openAiKey = Deno.env.get("OPENAI_API_KEY") ?? "";
-   const resendKey = Deno.env.get("RESEND_API_KEY") ?? "";
-   const teamSlug = Deno.env.get("TEAM_SLUG") ?? "";
-   const ownerEmail = Deno.env.get("OWNER_EMAIL") ?? "";
-   const fromEmail = Deno.env.get("FROM_EMAIL") ?? "";
+    const supabaseUrl = getRequiredEnv("SUPABASE_URL");
+    // Prefer service role for server-side tools (bypasses RLS). Fall back to anon to avoid "mystery" 400s when
+    // the service role secret was never configured.
+    const supabaseKey =
+      (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "").trim() ||
+      (Deno.env.get("SUPABASE_ANON_KEY") ?? "").trim() ||
+      getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"); // throw a clear error message if both are missing/blank
+
+    const openAiKey = getRequiredEnv("OPENAI_API_KEY");
+    const resendKey = getRequiredEnv("RESEND_API_KEY");
+    const teamSlug = getRequiredEnv("TEAM_SLUG");
+    const ownerEmail = getRequiredEnv("OWNER_EMAIL");
+    const fromEmail = getRequiredEnv("FROM_EMAIL");
 
 
     const openAiBaseUrl = Deno.env.get("OPENAI_BASE_URL") ?? "https://api.openai.com/v1";
@@ -168,18 +180,38 @@ serve(async (req) => {
     const { hh: startH, mm: startM } = parseTimeHHMM(businessHoursStart);
     const { hh: endH, mm: endM } = parseTimeHHMM(businessHoursEnd);
 
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
 
-    const { data: settingsRow } = await supabase
+    let settings: AgentSettingsRow = { system_prompt: null, toggles: null };
+    const { data: settingsRow, error: settingsErr } = await supabase
       .from("agent_settings")
       .select("system_prompt,toggles")
       .order("id")
       .limit(1)
       .maybeSingle();
+    if (settingsErr) {
+      // Support older schema where `agent_settings` uses `full_booking` boolean instead of `toggles` json.
+      if (looksLikeMissingColumnError(settingsErr.message, "toggles")) {
+        const { data: legacyRow, error: legacyErr } = await supabase
+          .from("agent_settings")
+          .select("system_prompt,full_booking")
+          .order("id")
+          .limit(1)
+          .maybeSingle();
+        if (legacyErr) throw new Error(`Failed to load agent_settings: ${legacyErr.message}`);
+        settings = {
+          system_prompt: (legacyRow as any)?.system_prompt ?? null,
+          toggles: { full_booking: Boolean((legacyRow as any)?.full_booking) },
+        };
+      } else {
+        throw new Error(`Failed to load agent_settings: ${settingsErr.message}`);
+      }
+    } else {
+      settings = (settingsRow ?? { system_prompt: null, toggles: null }) as AgentSettingsRow;
+    }
 
-    const settings = (settingsRow ?? { system_prompt: null, toggles: null }) as AgentSettingsRow;
     const systemPrompt = (settings.system_prompt ?? "").trim()
       ? (settings.system_prompt ?? "").trim()
       : "You are an AI booking assistant. Be concise and professional.";
@@ -287,23 +319,51 @@ serve(async (req) => {
 
           const startBound = new Date(`${dateOnly}T00:00:00.000Z`).toISOString();
           const endBound = new Date(`${dateOnly}T23:59:59.999Z`).toISOString();
-          const { data: bookings, error: bErr } = await supabase
-            .from("bookings")
-            .select("id,service_id,datetime")
-            .gte("datetime", startBound)
-            .lte("datetime", endBound);
-          if (bErr) throw new Error(`Failed to load bookings: ${bErr.message}`);
+          let bookings: Array<{ id: string; service_id: string; datetime: string }> = [];
+          {
+            const { data, error: bErr } = await supabase
+              .from("bookings")
+              .select("id,service_id,datetime")
+              .gte("datetime", startBound)
+              .lte("datetime", endBound);
+            if (bErr) {
+              // Support older schema using `appointment_time` instead of `datetime`
+              if (looksLikeMissingColumnError(bErr.message, "datetime")) {
+                const { data: legacy, error: legacyErr } = await supabase
+                  .from("bookings")
+                  .select("id,service_id,appointment_time")
+                  .gte("appointment_time", startBound)
+                  .lte("appointment_time", endBound);
+                if (legacyErr) throw new Error(`Failed to load bookings: ${legacyErr.message}`);
+                bookings = (legacy ?? []).map((b: any) => ({
+                  id: String(b.id),
+                  service_id: String(b.service_id),
+                  datetime: String(b.appointment_time),
+                }));
+              } else {
+                throw new Error(`Failed to load bookings: ${bErr.message}`);
+              }
+            } else {
+              bookings = (data ?? []).map((b: any) => ({
+                id: String(b.id),
+                service_id: String(b.service_id),
+                datetime: String(b.datetime),
+              }));
+            }
+          }
 
-          const durationByServiceId = new Map((services ?? []).map((s: any) => [s.id, Number(s.duration)]));
+          const durationByServiceId = new Map<string, number>(
+            (services ?? []).map((s: any) => [String(s.id), Number(s.duration)]),
+          );
           const slots: Array<{ start: string; end: string }> = [];
           for (let cursor = new Date(dayStart); addMinutes(cursor, duration) <= dayEnd; cursor = addMinutes(cursor, availabilityStepMinutes)) {
             const slotStart = cursor;
             const slotEnd = addMinutes(cursor, duration);
 
             let ok = true;
-            for (const b of bookings ?? []) {
-              const bStart = new Date((b as any).datetime);
-              const bDuration = durationByServiceId.get((b as any).service_id) ?? duration;
+            for (const b of bookings) {
+              const bStart = new Date(b.datetime);
+              const bDuration = durationByServiceId.get(b.service_id) ?? duration;
               const bEnd = addMinutes(bStart, bDuration);
               if (overlaps(slotStart, slotEnd, bStart, bEnd)) {
                 ok = false;
@@ -348,14 +408,39 @@ serve(async (req) => {
 
           const startBound = new Date(`${dateOnly}T00:00:00.000Z`).toISOString();
           const endBound = new Date(`${dateOnly}T23:59:59.999Z`).toISOString();
-          const { data: sameDay, error: bErr } = await supabase
-            .from("bookings")
-            .select("id,service_id,datetime")
-            .gte("datetime", startBound)
-            .lte("datetime", endBound);
-          if (bErr) throw new Error(`Failed to check availability: ${bErr.message}`);
+          let sameDay: Array<{ id: string; service_id: string; datetime: string }> = [];
+          {
+            const { data, error: bErr } = await supabase
+              .from("bookings")
+              .select("id,service_id,datetime")
+              .gte("datetime", startBound)
+              .lte("datetime", endBound);
+            if (bErr) {
+              if (looksLikeMissingColumnError(bErr.message, "datetime")) {
+                const { data: legacy, error: legacyErr } = await supabase
+                  .from("bookings")
+                  .select("id,service_id,appointment_time")
+                  .gte("appointment_time", startBound)
+                  .lte("appointment_time", endBound);
+                if (legacyErr) throw new Error(`Failed to check availability: ${legacyErr.message}`);
+                sameDay = (legacy ?? []).map((b: any) => ({
+                  id: String(b.id),
+                  service_id: String(b.service_id),
+                  datetime: String(b.appointment_time),
+                }));
+              } else {
+                throw new Error(`Failed to check availability: ${bErr.message}`);
+              }
+            } else {
+              sameDay = (data ?? []).map((b: any) => ({
+                id: String(b.id),
+                service_id: String(b.service_id),
+                datetime: String(b.datetime),
+              }));
+            }
+          }
 
-          if ((sameDay ?? []).some((b: any) => {
+          if (sameDay.some((b) => {
             const bStart = new Date(b.datetime);
             const bServiceId = String(b.service_id);
             // We only know duration for the booked service if we fetch it; approximate by using the requested duration.
@@ -369,19 +454,51 @@ serve(async (req) => {
             continue;
           }
 
-          const { data: created, error: insErr } = await supabase
-            .from("bookings")
-            .insert({
-              service_id: serviceId,
-              customer_name: customerName,
-              email,
-              datetime: start.toISOString(),
-            })
-            .select("id,service_id,customer_name,email,datetime")
-            .single();
-          if (insErr) throw new Error(`Failed to create booking: ${insErr.message}`);
+          let booking: BookingRow | null = null;
+          {
+            const { data: created, error: insErr } = await supabase
+              .from("bookings")
+              .insert({
+                service_id: serviceId,
+                customer_name: customerName,
+                email,
+                datetime: start.toISOString(),
+              })
+              .select("id,service_id,customer_name,email,datetime")
+              .single();
 
-          const booking = created as BookingRow;
+            if (insErr) {
+              // Support older schema with `appointment_time` + `customer_email`
+              const msg = insErr.message ?? "";
+              const shouldTryLegacy =
+                looksLikeMissingColumnError(msg, "datetime") ||
+                looksLikeMissingColumnError(msg, "email") ||
+                looksLikeMissingColumnError(msg, "customer_name");
+              if (!shouldTryLegacy) throw new Error(`Failed to create booking: ${insErr.message}`);
+
+              const { data: legacyCreated, error: legacyErr } = await supabase
+                .from("bookings")
+                .insert({
+                  service_id: serviceId,
+                  customer_name: customerName,
+                  customer_email: email,
+                  appointment_time: start.toISOString(),
+                })
+                .select("id,service_id,customer_name,customer_email,appointment_time")
+                .single();
+              if (legacyErr) throw new Error(`Failed to create booking: ${legacyErr.message}`);
+              booking = {
+                id: String((legacyCreated as any).id),
+                service_id: String((legacyCreated as any).service_id),
+                customer_name: (legacyCreated as any).customer_name ?? null,
+                email: (legacyCreated as any).customer_email ?? null,
+                datetime: String((legacyCreated as any).appointment_time),
+              };
+            } else {
+              booking = created as BookingRow;
+            }
+          }
+          if (!booking) throw new Error("Failed to create booking: unknown error");
 
           const subject = `[BOOKING-2026] ${teamSlug}`;
           const html = bookingHtml(booking, svc as any);
