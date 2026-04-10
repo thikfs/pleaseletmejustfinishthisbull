@@ -149,13 +149,14 @@ serve(async (req) => {
       return json({ error: "Invalid request payload. Expected { messages: [{role,content},...] }." }, 400);
     }
 
-    const supabaseUrl = getRequiredEnv("SUPABASE_URL");
-    const supabaseServiceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
-    const openAiKey = getRequiredEnv("OPENAI_API_KEY");
-    const resendKey = getRequiredEnv("RESEND_API_KEY");
-    const teamSlug = getRequiredEnv("TEAM_SLUG");
-    const ownerEmail = getRequiredEnv("OWNER_EMAIL");
-    const fromEmail = getRequiredEnv("FROM_EMAIL");
+   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+   const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+   const openAiKey = Deno.env.get("OPENAI_API_KEY") ?? "";
+   const resendKey = Deno.env.get("RESEND_API_KEY") ?? "";
+   const teamSlug = Deno.env.get("TEAM_SLUG") ?? "";
+   const ownerEmail = Deno.env.get("OWNER_EMAIL") ?? "";
+   const fromEmail = Deno.env.get("FROM_EMAIL") ?? "";
+
 
     const openAiBaseUrl = Deno.env.get("OPENAI_BASE_URL") ?? "https://api.openai.com/v1";
     const openAiModel = Deno.env.get("OPENAI_MODEL") ?? "gpt-4o-mini";
