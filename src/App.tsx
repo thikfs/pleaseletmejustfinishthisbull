@@ -8,7 +8,6 @@ import NotFound from "@/app/NotFoundRoute";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminOverview from "./pages/admin/Overview";
 import ServiceManager from "./pages/admin/ServiceManager";
-import AgentSettings from "./pages/admin/AgentSettings";
 import AppointmentCalendar from "./pages/admin/AppointmentCalendar";
 import PlaceholderText from "./pages/PlaceholderText";
 import Login from "@/app/LoginRoute";
@@ -38,7 +37,6 @@ const App = () => (
             >
               <Route index element={<AdminOverview />} />
               <Route path="services" element={<ServiceManager />} />
-              <Route path="agent" element={<AgentSettings />} />
               <Route path="appointments" element={<AppointmentCalendar />} />
             </Route>
             <Route path="/ai-booking-2026.txt" element={<PlaceholderText />} />

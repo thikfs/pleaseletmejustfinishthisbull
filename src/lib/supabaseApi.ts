@@ -16,11 +16,11 @@ export type BookingRow = {
   service?: ServiceRow | null;
 };
 
-export type AgentSettingsRow = {
-  id: string;
-  system_prompt: string | null;
-  toggles: Record<string, unknown> | null;
-};
+function looksLikeMissingColumnError(msg: string, column: string) {
+  const m = msg.toLowerCase();
+  const c = column.toLowerCase();
+  return m.includes(`column "${c}"`) && m.includes("does not exist");
+}
 
 export async function fetchServices() {
   const supabase = requireSupabase();
@@ -91,13 +91,38 @@ export async function fetchBookingsWithServices(options?: { upcomingOnly?: boole
   const supabase = requireSupabase();
   const upcomingOnly = options?.upcomingOnly ?? false;
   const now = new Date().toISOString();
-  const { data: bookings, error } = await supabase
+  // Prefer the schema shown in your DB (datetime + email).
+  const primary = await supabase
     .from("bookings")
     .select("id,service_id,customer_name,email,datetime")
     .order("datetime", { ascending: true })
     .gte("datetime", upcomingOnly ? now : "1900-01-01T00:00:00.000Z");
-  if (error) throw error;
-  const rows = (bookings ?? []) as BookingRow[];
+
+  let rows: BookingRow[] = [];
+  if (!primary.error) {
+    rows = (primary.data ?? []) as BookingRow[];
+  } else {
+    // Back-compat: some deployments used `appointment_time` + `customer_email`.
+    const msg = primary.error.message ?? "";
+    if (looksLikeMissingColumnError(msg, "datetime") || looksLikeMissingColumnError(msg, "email")) {
+      const legacy = await supabase
+        .from("bookings")
+        .select("id,service_id,customer_name,customer_email,appointment_time")
+        .order("appointment_time", { ascending: true })
+        .gte("appointment_time", upcomingOnly ? now : "1900-01-01T00:00:00.000Z");
+      if (legacy.error) throw legacy.error;
+      rows = (legacy.data ?? []).map((b: any) => ({
+        id: String(b.id),
+        service_id: String(b.service_id),
+        customer_name: (b.customer_name ?? null) as string | null,
+        email: (b.customer_email ?? null) as string | null,
+        datetime: String(b.appointment_time),
+      }));
+    } else {
+      throw primary.error;
+    }
+  }
+
   const ids = Array.from(new Set(rows.map((b) => b.service_id).filter((id) => typeof id === "string" && id.length)));
   if (ids.length === 0) return rows;
 
@@ -114,66 +139,40 @@ export async function fetchBookingsWithServices(options?: { upcomingOnly?: boole
   }));
 }
 
-export async function fetchAgentSettings() {
-  const supabase = requireSupabase();
-  const { data, error } = await supabase
-    .from("agent_settings")
-    .select("id,system_prompt,toggles")
-    .limit(1);
-  if (error) throw error;
-  return (data?.[0] ?? null) as AgentSettingsRow | null;
-}
-
-export async function upsertAgentSettings(input: {
-  id?: string;
-  system_prompt: string;
-  toggles: Record<string, unknown>;
-}) {
-  const supabase = requireSupabase();
-  if (input.id) {
-    const { data, error } = await supabase
-      .from("agent_settings")
-      .update({
-        system_prompt: input.system_prompt,
-        toggles: input.toggles,
-      })
-      .eq("id", input.id)
-      .select("id,system_prompt,toggles")
-      .limit(1)
-      .single();
-    if (error) throw error;
-    return data as AgentSettingsRow;
-  }
-
-  const { data, error } = await supabase
-    .from("agent_settings")
-    .insert({
-      system_prompt: input.system_prompt,
-      toggles: input.toggles,
-    })
-    .select("id,system_prompt,toggles")
-    .limit(1)
-    .single();
-  if (error) throw error;
-  return data as AgentSettingsRow;
-}
-
 export async function fetchDashboardStats() {
   const supabase = requireSupabase();
   const now = new Date().toISOString();
-  const [totalAppointments, activeServices, upcomingSessions] = await Promise.all([
+  const [totalAppointments, activeServices] = await Promise.all([
     supabase.from("bookings").select("id", { count: "exact", head: true }),
     supabase.from("services").select("id", { count: "exact", head: true }),
-    supabase.from("bookings").select("id", { count: "exact", head: true }).gte("datetime", now),
   ]);
 
   if (totalAppointments.error) throw totalAppointments.error;
   if (activeServices.error) throw activeServices.error;
-  if (upcomingSessions.error) throw upcomingSessions.error;
+
+  // Prefer `datetime` (your current schema), fall back to `appointment_time` (legacy schema).
+  const upcomingPrimary = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .gte("datetime", now);
+  let upcomingCount = upcomingPrimary.count ?? 0;
+  if (upcomingPrimary.error) {
+    const msg = upcomingPrimary.error.message ?? "";
+    if (looksLikeMissingColumnError(msg, "datetime")) {
+      const upcomingLegacy = await supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .gte("appointment_time", now);
+      if (upcomingLegacy.error) throw upcomingLegacy.error;
+      upcomingCount = upcomingLegacy.count ?? 0;
+    } else {
+      throw upcomingPrimary.error;
+    }
+  }
 
   return {
     totalAppointments: totalAppointments.count ?? 0,
     activeServices: activeServices.count ?? 0,
-    upcomingSessions: upcomingSessions.count ?? 0,
+    upcomingSessions: upcomingCount,
   };
 }

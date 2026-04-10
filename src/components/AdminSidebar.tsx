@@ -1,4 +1,4 @@
-import { LayoutDashboard, ListChecks, Bot, CalendarDays } from "lucide-react";
+import { LayoutDashboard, ListChecks, CalendarDays } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -15,7 +15,6 @@ import {
 const items = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Service Manager", url: "/dashboard/services", icon: ListChecks },
-  { title: "Agent Persona", url: "/dashboard/agent", icon: Bot },
   { title: "Appointments", url: "/dashboard/appointments", icon: CalendarDays },
 ];
 
