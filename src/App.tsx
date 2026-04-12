@@ -9,6 +9,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import AdminOverview from "./pages/admin/Overview";
 import ServiceManager from "./pages/admin/ServiceManager";
 import AppointmentCalendar from "./pages/admin/AppointmentCalendar";
+import AgentSettings from "./pages/admin/AgentSettings";
 import PlaceholderText from "./pages/PlaceholderText";
 import Login from "@/app/LoginRoute";
 import { AuthProvider } from "@/lib/auth";
@@ -38,6 +39,7 @@ const App = () => (
               <Route index element={<AdminOverview />} />
               <Route path="services" element={<ServiceManager />} />
               <Route path="appointments" element={<AppointmentCalendar />} />
+              <Route path="agent-settings" element={<AgentSettings />} />
             </Route>
             <Route path="/ai-booking-2026.txt" element={<PlaceholderText />} />
             <Route path="*" element={<NotFound />} />

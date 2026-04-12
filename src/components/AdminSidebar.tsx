@@ -1,4 +1,4 @@
-import { LayoutDashboard, ListChecks, CalendarDays } from "lucide-react";
+import { LayoutDashboard, ListChecks, CalendarDays, Bot } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -17,6 +17,7 @@ const items = [
   { titleKey: "nav_overview" as const, url: "/dashboard", icon: LayoutDashboard },
   { titleKey: "nav_services" as const, url: "/dashboard/services", icon: ListChecks },
   { titleKey: "nav_bookings" as const, url: "/dashboard/appointments", icon: CalendarDays },
+  { titleKey: "nav_agent_settings" as const, url: "/dashboard/agent-settings", icon: Bot },
 ];
 
 export function AdminSidebar() {
