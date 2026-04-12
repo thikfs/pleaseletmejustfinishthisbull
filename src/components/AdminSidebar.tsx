@@ -11,14 +11,16 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useTranslation } from "react-i18next";
 
 const items = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Service Manager", url: "/dashboard/services", icon: ListChecks },
-  { title: "Appointments", url: "/dashboard/appointments", icon: CalendarDays },
+  { titleKey: "nav_overview" as const, url: "/dashboard", icon: LayoutDashboard },
+  { titleKey: "nav_services" as const, url: "/dashboard/services", icon: ListChecks },
+  { titleKey: "nav_bookings" as const, url: "/dashboard/appointments", icon: CalendarDays },
 ];
 
 export function AdminSidebar() {
+  const { t } = useTranslation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
 
@@ -27,12 +29,12 @@ export function AdminSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="font-display text-xs">
-            {!collapsed && "Serenity Admin"}
+            {!collapsed && t("admin_brand")}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.titleKey}>
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
@@ -41,7 +43,7 @@ export function AdminSidebar() {
                       activeClassName="bg-sidebar-accent text-sidebar-primary font-semibold"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && <span>{t(item.titleKey)}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

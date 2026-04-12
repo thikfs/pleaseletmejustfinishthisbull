@@ -31,6 +31,7 @@ import {
   ServiceRow,
   updateService,
 } from "@/lib/supabaseApi";
+import { useTranslation } from "react-i18next";
 
 type ServiceFormState = {
   name: string;
@@ -47,6 +48,7 @@ const sampleServices: Array<Omit<ServiceRow, "id">> = [
 ];
 
 export default function ServiceManager() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<ServiceRow | null>(null);
   const [open, setOpen] = useState(false);
@@ -100,17 +102,17 @@ export default function ServiceManager() {
   const handleSave = async () => {
     setFormError(null);
     if (!form.name.trim()) {
-      setFormError("Name is required.");
+      setFormError(t('name_required'));
       return;
     }
     const duration = Number(form.duration);
     if (!Number.isFinite(duration) || duration <= 0) {
-      setFormError("Duration must be a positive number.");
+      setFormError(t('duration_positive'));
       return;
     }
     const price = form.price.trim() ? Number(form.price) : null;
     if (form.price.trim() && (!Number.isFinite(price) || (price ?? 0) < 0)) {
-      setFormError("Price must be a valid number.");
+      setFormError(t('price_valid'));
       return;
     }
 
@@ -128,12 +130,12 @@ export default function ServiceManager() {
       }
       setOpen(false);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Unable to save service.");
+      setFormError(err instanceof Error ? err.message : t('unable_save_service'));
     }
   };
 
   const handleDelete = async (service: ServiceRow) => {
-    const confirmed = window.confirm(`Delete "${service.name}"? This cannot be undone.`);
+    const confirmed = window.confirm(t('confirm_delete_service', { name: service.name }));
     if (!confirmed) return;
     try {
       await deleteMutation.mutateAsync(service.id);
@@ -143,12 +145,12 @@ export default function ServiceManager() {
   };
 
   const handleSeed = async () => {
-    const confirmed = window.confirm("Add sample services to your database?");
+    const confirmed = window.confirm(t('confirm_seed_services'));
     if (!confirmed) return;
     try {
       await seedMutation.mutateAsync(sampleServices);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Unable to seed services.");
+      setFormError(err instanceof Error ? err.message : t('unable_seed_services'));
     }
   };
 
@@ -158,31 +160,31 @@ export default function ServiceManager() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold">Service Manager</h1>
+        <h1 className="font-display text-2xl font-bold">{t('nav_services')}</h1>
         <div className="flex items-center gap-2">
           {isSupabaseConfigured && (services?.length ?? 0) === 0 && (
             <Button variant="outline" onClick={handleSeed} disabled={isSeeding}>
-              {isSeeding ? "Seeding..." : "Add Sample Services"}
+              {isSeeding ? t('seeding') : t('add_sample_services')}
             </Button>
           )}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button onClick={openNew} disabled={!isSupabaseConfigured}>
-                <Plus className="mr-1 h-4 w-4" /> Add New Service
+                <Plus className="mr-1 h-4 w-4" /> {t('add_new_service')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editing ? "Edit Service" : "New Service"}</DialogTitle>
-                <DialogDescription>Fill in the service details below.</DialogDescription>
+                <DialogTitle>{editing ? t('edit_service') : t('new_service')}</DialogTitle>
+                <DialogDescription>{t('fill_service_details')}</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div>
-                  <Label>Name</Label>
+                  <Label>{t('name')}</Label>
                   <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </div>
                 <div>
-                  <Label>Price ($)</Label>
+                  <Label>{t('price_dollar')}</Label>
                   <Input
                     type="number"
                     value={form.price}
@@ -190,7 +192,7 @@ export default function ServiceManager() {
                   />
                 </div>
                 <div>
-                  <Label>Duration (mins)</Label>
+                  <Label>{t('duration_mins')}</Label>
                   <Input
                     type="number"
                     value={form.duration}
@@ -201,7 +203,7 @@ export default function ServiceManager() {
               {formError && <p className="text-sm text-destructive">{formError}</p>}
               <DialogFooter>
                 <Button onClick={handleSave} disabled={saving}>
-                  {saving ? "Saving..." : "Save"}
+                  {saving ? t('saving') : t('save')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -211,14 +213,14 @@ export default function ServiceManager() {
 
       {!isSupabaseConfigured && (
         <Alert>
-          <AlertTitle>Supabase Not Configured</AlertTitle>
-          <AlertDescription>Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to manage services.</AlertDescription>
+          <AlertTitle>{t('supabase_not_configured')}</AlertTitle>
+          <AlertDescription>{t('supabase_config_message_services')}</AlertDescription>
         </Alert>
       )}
 
       {isSupabaseConfigured && error && (
         <Alert variant="destructive">
-          <AlertTitle>Unable to load services</AlertTitle>
+          <AlertTitle>{t('unable_load_services')}</AlertTitle>
           <AlertDescription>{(error as Error).message}</AlertDescription>
         </Alert>
       )}
@@ -227,32 +229,32 @@ export default function ServiceManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead className="w-24 text-right">Actions</TableHead>
+              <TableHead>{t('service_name')}</TableHead>
+              <TableHead>{t('service_price')}</TableHead>
+              <TableHead>{t('service_duration')}</TableHead>
+              <TableHead className="w-24 text-right">{t('actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isSupabaseConfigured && isLoading && (
               <TableRow>
                 <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
-                  Loading services...
+                  {t('loading_services')}
                 </TableCell>
               </TableRow>
             )}
             {isSupabaseConfigured && !isLoading && (services?.length ?? 0) === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
-                  No services yet. Add your first service.
+                  {t('no_services_yet')}
                 </TableCell>
               </TableRow>
             )}
             {services?.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell>{s.price === null ? "—" : `$${s.price}`}</TableCell>
-                <TableCell>{s.duration} min</TableCell>
+                <TableCell>{s.price === null ? t('dash') : `$${s.price}`}</TableCell>
+                <TableCell>{s.duration} {t('min')}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(s)}>

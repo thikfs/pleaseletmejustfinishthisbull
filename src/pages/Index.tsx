@@ -111,7 +111,7 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="border-t bg-muted/40 py-8 text-center text-sm text-muted-foreground">
-        <p>Built in AI Web Session 2026, BookingAgent Pro, Student: [Name], Team: [Slug]</p>
+        <p>AI Booking 2026 - Educational Project - Team: [Serenity Booking Suite]</p>
       </footer>
 
       <ChatWidget />

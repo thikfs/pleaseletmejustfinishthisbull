@@ -1,0 +1,30 @@
+--- PROJECT MANIFEST: AI BOOKING 2026 ---
+
+TEAM_SLUG: [Serenity Booking Suite]
+ASSIGNMENT: AI Booking System Integration
+STUDENT: [Thiago kumlehn fajardo silva, Diego Alvarez ]
+
+TECHNICAL STACK:
+- Frontend: React (Vite)
+- UI Library: shadcn/ui + Tailwind CSS
+- Database: Supabase
+- State Management: TanStack Query
+- AI Integration: Supabase Edge Functions + OpenAI/Claude
+- Notifications: Resend API
+
+CORE ENDPOINTS:
+- Supabase URL: [https://mxbeupstlveqmroitlkq.supabase.co]
+- Edge Function: [ https://mxbeupstlveqmroitlkq.supabase.co/functions/v1/chat-handler ]
+AI TOOL DEFINITIONS:
+1. check_availability: 
+   - Purpose: Validates time slots against the 'bookings' table.
+   - Logic: Ensures no overlapping appointments exist for the requested duration.
+2. create_booking: 
+   - Purpose: Finalizes the reservation in the database.
+   - Logic: Triggers a Database Webhook or Edge Function process to notify the user via Resend.
+
+COMPLIANCE CHECKLIST:
+- [x] Internationalization (i18n) implemented (English + Secondary Language)
+- [x] Resend subject line follows [BOOKING-2026] <TEAM_SLUG> format
+- [x] Security: RLS enabled on sensitive tables
+- [x] Environment Variables: Secured in Netlify (VITE_SUPABASE_URL, RESEND_API_KEY, etc.)
