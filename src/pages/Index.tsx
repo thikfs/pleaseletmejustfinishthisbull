@@ -4,6 +4,8 @@ import { ChatWidget } from "@/components/ChatWidget";
 import { useQuery } from "@tanstack/react-query";
 import { fetchServices } from "@/lib/supabaseApi";
 import { isSupabaseConfigured } from "@/lib/supabaseClient";
+import { useTranslation } from "react-i18next";
+import { LanguageSelect } from "@/components/LanguageSelect";
 
 const iconSet = [Heart, Users, Flower2];
 
@@ -29,6 +31,7 @@ const fallbackServices = [
 ];
 
 const Index = () => {
+  const { t } = useTranslation();
   const { data: services, isLoading, error } = useQuery({
     queryKey: ["public-services"],
     queryFn: fetchServices,
@@ -40,6 +43,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-end px-4">
+          <LanguageSelect />
+        </div>
+      </header>
+
       {/* Hero */}
       <section className="relative flex min-h-[70vh] flex-col items-center justify-center overflow-hidden px-4 text-center"
         style={{
@@ -53,10 +62,10 @@ const Index = () => {
         />
         <div className="relative z-10 max-w-3xl">
           <h1 className="mb-4 font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
-            Your Journey to Mental Wellness Starts Here
+            {t("home_hero_title")}
           </h1>
           <p className="mx-auto max-w-xl text-lg text-muted-foreground">
-            Compassionate, professional therapy tailored to your needs.
+            {t("home_hero_subtitle")}
           </p>
         </div>
       </section>
@@ -64,22 +73,22 @@ const Index = () => {
       {/* Services */}
       <section className="mx-auto max-w-5xl px-4 py-20">
         <h2 className="mb-10 text-center font-display text-3xl font-semibold text-foreground">
-          Our Therapeutic Services
+          {t("home_services_heading")}
         </h2>
         {!isSupabaseConfigured && (
           <p className="text-center text-sm text-muted-foreground">
-            Showing sample services. Connect Supabase to manage these dynamically.
+            {t("home_sample_services_hint")}
           </p>
         )}
         {isSupabaseConfigured && isLoading && (
-          <p className="text-center text-sm text-muted-foreground">Loading services...</p>
+          <p className="text-center text-sm text-muted-foreground">{t("home_loading_services")}</p>
         )}
         {isSupabaseConfigured && error && (
-          <p className="text-center text-sm text-destructive">Unable to load services.</p>
+          <p className="text-center text-sm text-destructive">{t("home_unable_load_services")}</p>
         )}
         {isSupabaseConfigured && services && services.length === 0 && (
           <p className="text-center text-sm text-muted-foreground">
-            Showing sample services until you add your own in the dashboard.
+            {t("home_empty_db_hint")}
           </p>
         )}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -94,13 +103,13 @@ const Index = () => {
                   <div>
                     <CardTitle className="text-lg">{s.name}</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      {s.duration} min · {s.price ? `$${s.price}` : "Contact us"}
+                      {s.duration} {t("min")} · {s.price ? `$${s.price}` : t("home_price_contact")}
                     </p>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Speak with our team to tailor the right session for you.
+                    {t("home_service_card_blurb")}
                   </p>
                 </CardContent>
               </Card>
@@ -111,7 +120,7 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="border-t bg-muted/40 py-8 text-center text-sm text-muted-foreground">
-        <p>AI Booking 2026 - Educational Project - Team: [Serenity Booking Suite]</p>
+        <p>{t("home_footer_credit")}</p>
       </footer>
 
       <ChatWidget />

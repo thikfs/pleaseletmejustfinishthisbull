@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 interface Message {
   id: number;
@@ -13,23 +15,30 @@ type ChatRequestPayload = {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
 };
 
-const quickReplies = [
-  "Check availability",
-  "Our specialties",
-  "Emergency contacts",
-];
+const quickReplyKeys = [
+  "home_chat_quick_availability",
+  "home_chat_quick_specialties",
+  "home_chat_quick_emergency",
+] as const;
 
 export function ChatWidget() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: "Welcome to Serenity Minds! 🌿 How can I help you today?",
-      sender: "bot",
-    },
+  const [messages, setMessages] = useState<Message[]>(() => [
+    { id: 1, text: i18n.t("home_chat_welcome"), sender: "bot" },
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      const [first, ...rest] = prev;
+      if (first?.sender === "bot" && first.id === 1) {
+        return [{ ...first, text: i18n.t("home_chat_welcome") }, ...rest];
+      }
+      return prev;
+    });
+  }, [i18n.language]);
 
   const chatEndpoint = useMemo(() => {
     let supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -44,7 +53,7 @@ export function ChatWidget() {
     if (!chatEndpoint) {
       setMessages((prev) => [
         ...prev,
-        { id: Date.now(), text: "Chat is not configured yet (missing VITE_SUPABASE_URL).", sender: "bot" },
+        { id: Date.now(), text: t("home_chat_not_configured"), sender: "bot" },
       ]);
       return;
     }
@@ -72,7 +81,9 @@ export function ChatWidget() {
       const data = (await res.json().catch(() => null)) as { reply?: string; error?: string } | null;
       const reply =
         data?.reply ??
-        (res.ok ? "Sorry, I couldn't process that request." : `Chat error: ${data?.error ?? res.status}`);
+        (res.ok
+          ? t("home_chat_process_error")
+          : `Chat error: ${data?.error ?? res.status}`);
 
       setMessages((prev) => [
         ...prev,
@@ -81,7 +92,7 @@ export function ChatWidget() {
     } catch {
       setMessages((prev) => [
         ...prev,
-        { id: Date.now() + 1, text: "Network error. Please try again.", sender: "bot" },
+        { id: Date.now() + 1, text: t("home_chat_network_error"), sender: "bot" },
       ]);
     } finally {
       setSending(false);
@@ -94,7 +105,7 @@ export function ChatWidget() {
       <button
         onClick={() => setOpen(!open)}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
-        aria-label="Chat with Therapy Assistant"
+        aria-label={t("home_chat_aria_toggle")}
       >
         {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
       </button>
@@ -104,8 +115,8 @@ export function ChatWidget() {
         <div className="fixed bottom-24 right-6 z-50 flex h-[28rem] w-80 flex-col overflow-hidden rounded-2xl border bg-card shadow-xl">
           {/* Header */}
           <div className="bg-primary px-4 py-3 text-primary-foreground">
-            <p className="font-semibold">Therapy Assistant</p>
-            <p className="text-xs opacity-80">We're here to help</p>
+            <p className="font-semibold">{t("home_chat_title")}</p>
+            <p className="text-xs opacity-80">{t("home_chat_subtitle")}</p>
           </div>
 
           {/* Messages */}
@@ -126,13 +137,14 @@ export function ChatWidget() {
 
           {/* Quick replies */}
           <div className="flex flex-wrap gap-1.5 border-t px-3 pt-2">
-            {quickReplies.map((qr) => (
+            {quickReplyKeys.map((key) => (
               <button
-                key={qr}
-                onClick={() => sendMessage(qr)}
+                key={key}
+                type="button"
+                onClick={() => sendMessage(t(key))}
                 className="rounded-full border bg-secondary px-3 py-1 text-xs text-secondary-foreground transition-colors hover:bg-accent"
               >
-                {qr}
+                {t(key)}
               </button>
             ))}
           </div>
@@ -143,7 +155,7 @@ export function ChatWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-              placeholder="Type a message..."
+              placeholder={t("home_chat_placeholder")}
               className="text-sm"
             />
             <Button size="icon" onClick={() => sendMessage(input)} disabled={sending}>

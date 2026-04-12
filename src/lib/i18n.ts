@@ -59,6 +59,32 @@ const en = {
   min: "min",
   sign_out: "Sign out",
   admin_brand: "Serenity Admin",
+  home_hero_title: "Your journey to mental wellness starts here",
+  home_hero_subtitle:
+    "Compassionate, professional therapy tailored to your needs.",
+  home_services_heading: "Our therapeutic services",
+  home_sample_services_hint:
+    "Showing sample services. Connect Supabase to manage these dynamically.",
+  home_loading_services: "Loading services…",
+  home_unable_load_services: "Unable to load services.",
+  home_empty_db_hint:
+    "Showing sample services until you add your own in the dashboard.",
+  home_service_card_blurb:
+    "Speak with our team to tailor the right session for you.",
+  home_price_contact: "Contact us",
+  home_footer_credit:
+    "AI Booking 2026 — Educational project — Serenity Booking Suite",
+  home_chat_welcome: "Welcome to Serenity Minds. How can we help you today?",
+  home_chat_quick_availability: "Check availability",
+  home_chat_quick_specialties: "Our specialties",
+  home_chat_quick_emergency: "Emergency contacts",
+  home_chat_not_configured: "Chat is not configured yet (missing VITE_SUPABASE_URL).",
+  home_chat_process_error: "Sorry, we could not process that request.",
+  home_chat_network_error: "Network error. Please try again.",
+  home_chat_aria_toggle: "Open or close therapy assistant chat",
+  home_chat_title: "Therapy assistant",
+  home_chat_subtitle: "We are here to help",
+  home_chat_placeholder: "Type a message…",
 } as const;
 
 const et: Record<keyof typeof en, string> = {
@@ -119,6 +145,33 @@ const et: Record<keyof typeof en, string> = {
   min: "min",
   sign_out: "Logi välja",
   admin_brand: "Serenity admin",
+  home_hero_title: "Teie teekond vaimse heaolu juurde algab siit",
+  home_hero_subtitle:
+    "Kaastundlik ja professionaalne teraapia, mis on kohandatud teie vajadustele.",
+  home_services_heading: "Meie teraapiateenused",
+  home_sample_services_hint:
+    "Kuvatakse näidisteenused. Ühendage Supabase, et hallata neid dünaamiliselt.",
+  home_loading_services: "Laadin teenuseid…",
+  home_unable_load_services: "Teenuseid ei õnnestunud laadida.",
+  home_empty_db_hint:
+    "Kuvatakse näidisteenused, kuni lisate omad juhtpaneelil.",
+  home_service_card_blurb:
+    "Rääkige meie tiimiga, et leida teile sobiv sessioon.",
+  home_price_contact: "Võtke ühendust",
+  home_footer_credit:
+    "AI Booking 2026 — Hariduslik projekt — Serenity Booking Suite",
+  home_chat_welcome: "Tere tulemast Serenity Minds’i. Kuidas saame täna aidata?",
+  home_chat_quick_availability: "Kontrolli vabad ajad",
+  home_chat_quick_specialties: "Meie erialad",
+  home_chat_quick_emergency: "Hädaabi kontaktid",
+  home_chat_not_configured:
+    "Vestlust pole veel seadistatud (puudub VITE_SUPABASE_URL).",
+  home_chat_process_error: "Kahjuks ei õnnestunud seda päringut töödelda.",
+  home_chat_network_error: "Võrguviga. Palun proovige uuesti.",
+  home_chat_aria_toggle: "Ava või sulge teraapiaabilise vestlus",
+  home_chat_title: "Teraapiaabiline",
+  home_chat_subtitle: "Oleme siin, et aidata",
+  home_chat_placeholder: "Kirjutage sõnum…",
 };
 
 i18n
