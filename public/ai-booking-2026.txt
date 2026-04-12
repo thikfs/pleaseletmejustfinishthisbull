@@ -1,30 +1,120 @@
---- PROJECT MANIFEST: AI BOOKING 2026 ---
+================================================================================
+AI BOOKING 2026 — PROJECT MANIFEST
+================================================================================
 
-TEAM_SLUG: [Serenity Booking Suite]
-ASSIGNMENT: AI Booking System Integration
-STUDENT: [Thiago kumlehn fajardo silva, Diego Alvarez ]
+STUDENT NAME
+  Thiago Kumlehn Fajardo Silva
+  Diego Alvarez
 
-TECHNICAL STACK:
-- Frontend: React (Vite)
-- UI Library: shadcn/ui + Tailwind CSS
-- Database: Supabase
-- State Management: TanStack Query
-- AI Integration: Supabase Edge Functions + OpenAI/Claude
-- Notifications: Resend API
+TEAM SLUG
+  Serenity Booking Suite
 
-CORE ENDPOINTS:
-- Supabase URL: [https://mxbeupstlveqmroitlkq.supabase.co]
-- Edge Function: [ https://mxbeupstlveqmroitlkq.supabase.co/functions/v1/chat-handler ]
-AI TOOL DEFINITIONS:
-1. check_availability: 
-   - Purpose: Validates time slots against the 'bookings' table.
-   - Logic: Ensures no overlapping appointments exist for the requested duration.
-2. create_booking: 
-   - Purpose: Finalizes the reservation in the database.
-   - Logic: Triggers a Database Webhook or Edge Function process to notify the user via Resend.
+LIVE URL (deployed application)
+  https://magenta-travesseiro-925f03.netlify.app/
 
-COMPLIANCE CHECKLIST:
-- [x] Internationalization (i18n) implemented (English + Secondary Language)
-- [x] Resend subject line follows [BOOKING-2026] <TEAM_SLUG> format
-- [x] Security: RLS enabled on sensitive tables
-- [x] Environment Variables: Secured in Netlify (VITE_SUPABASE_URL, RESEND_API_KEY, etc.)
+REPOSITORY URL (source code)
+  https://github.com/thikfs/serenitybookingsuiteapc
+
+--------------------------------------------------------------------------------
+STACK USED
+--------------------------------------------------------------------------------
+
+  Frontend
+    • React 19 (TypeScript)
+    • Vite 7
+    • React Router
+    • TanStack Query (React Query)
+    • Tailwind CSS
+    • shadcn/ui (Radix primitives)
+
+  Backend & data
+    • Supabase (PostgreSQL, Auth, Row Level Security)
+    • Supabase Edge Functions (Deno runtime)
+
+  AI & messaging
+    • OpenAI Chat Completions API (tools / function calling)
+    • Resend (transactional email for booking confirmations)
+
+  Internationalization
+    • i18next + react-i18next + browser language detector
+
+--------------------------------------------------------------------------------
+TECHNICAL EXPLANATION: FUNCTION CALLING IMPLEMENTATION
+--------------------------------------------------------------------------------
+
+Function calling is implemented entirely in the Supabase Edge Function
+`supabase/functions/chat-handler/index.ts`. The browser chat widget posts a
+JSON body `{ messages: [{ role, content }, ...] }` to this function; the
+function does not run the model in the browser.
+
+1. Tool definitions (OpenAI "tools" schema)
+
+   The handler builds a static `tools` array with two JSON Schema functions:
+
+   • `check_availability` — parameters: `date` (required), optional `service_id`.
+     The model is instructed to prefer YYYY-MM-DD and UTC ISO times for follow-up.
+
+   • `create_booking` — parameters: `service_id`, `customer_name`, `email`,
+     `datetime` (ISO). Used only after the assistant has gathered required fields.
+
+   These are sent on every chat completion request together with
+   `tool_choice: "auto"` so the model decides when to call a tool versus
+   reply in natural language.
+
+2. Request to the LLM
+
+   The function loads optional `system_prompt` (and related settings) from the
+   `agent_settings` table, then concatenates fixed rules (e.g. call
+   `check_availability` before confirming times or creating a booking). The
+   message list is: system rules + the user/assistant transcript from the client.
+
+   It POSTs to `${OPENAI_BASE_URL}/chat/completions` (default OpenAI v1) with:
+   `model`, `messages`, `tools`, `tool_choice: "auto"`, and `temperature: 0.2`.
+
+3. Multi-round agent loop (server-side)
+
+   A `for` loop runs up to `maxRounds` (6). Each iteration:
+
+   • Calls `openAiChat(...)` with the current `messages` and `tools`.
+   • Reads `choices[0].message`: optional `content` and `tool_calls`.
+   • If there are no `tool_calls`, the handler treats `content` as the final
+     reply and returns `{ reply }` to the frontend (plain text for the widget).
+
+   • If there are `tool_calls`, it appends an assistant message that includes
+     `tool_calls` (OpenAI format), then executes each call locally.
+
+4. Executing tools and feeding results back
+
+   For each `tool_calls[]` entry, the server parses `function.name` and
+   `function.arguments` (JSON). It does not delegate execution to the model:
+
+   • `check_availability`: Uses the Supabase client (service role preferred) to
+     load services and same-day bookings, applies configured business hours and
+     slot step (e.g. 30 minutes), and computes non-overlapping windows. The
+     result is JSON (date, service info, `slots` with start/end ISO strings)
+     attached as a **tool** message: `{ role: "tool", tool_call_id, content }`.
+
+   • `create_booking`: Validates input, loads the service duration, re-checks
+     overlaps for the requested window, inserts into `bookings` (with fallbacks
+     for legacy column names if present), then sends confirmation email via
+     Resend to the customer and owner. The tool result JSON indicates success or
+     failure (`ok`, `reason`, etc.).
+
+   Unknown tools return a JSON error payload in the same tool role.
+
+5. Loop until natural-language reply
+
+   After appending all tool results for that round, the loop calls the LLM
+   again with the extended transcript. The model may issue more tool calls or
+   emit a final assistant `content` with no tools; only the latter ends the
+   request with `{ reply }`. If the loop exhausts `maxRounds` without a final
+   reply, the handler throws (surfaced as a server error).
+
+In summary: the **model** proposes function calls; the **Edge Function** runs
+deterministic TypeScript against Supabase and email APIs; results are returned
+through standard OpenAI **tool** messages until the model produces a user-facing
+answer—this is the standard "agentic" function-calling pattern on the server.
+
+================================================================================
+END OF MANIFEST
+================================================================================
